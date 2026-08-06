@@ -1,6 +1,9 @@
 # Use stable Node 22 (LTS) image
 FROM node:22-alpine
 
+# Install OpenSSL and glibc compatibility library required by Prisma Engine
+RUN apk add --no-cache openssl libc6-compat
+
 WORKDIR /usr/src/app
 
 # Copy package.json and package-lock.json
@@ -20,7 +23,7 @@ RUN pnpm install
 COPY . .
 
 # Generate Prisma Client (uncomment if you need it during image build)
-# RUN pnpm run generate
+RUN pnpm run generate
 
 # Build TypeScript code
 RUN pnpm run build  

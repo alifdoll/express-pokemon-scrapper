@@ -14,6 +14,7 @@ import moment from 'moment';
 // import MulterMiddleware from './middlewares/MulterMiddleware';
 
 import { ApiKeyMiddleware, MulterMiddleware } from './middlewares';
+import { PokemonController } from './controllers';
 
 class App {
   public app: Application;
@@ -67,12 +68,13 @@ class App {
 
   public routes(): void {
     // this.app.use("/v1/debitur/restructures", AuthMiddleware, RestructureController);
+    this.app.use('/pokemon', ApiKeyMiddleware, PokemonController);
 
     // dont change this route (for unknown route, send 404 response)
     this.app.all('*', (req: Request, res: Response) => {
       return res.status(404).json({
         data: null,
-        message: 'Route not found',
+        message: 'YOO IS THIS THE ROUTE?',
         status: 404,
       });
     });
