@@ -23,37 +23,66 @@ class PokemonController extends Controller {
   public async index(req: Request, res: Response): Promise<Response> {
     try {
       const request_body = req.body;
-      console.log('🚀 ~ PokemonController ~ index ~ html_data:');
 
-      const url = 'https://www.octaveclothing.com/men';
+      // const url = 'https://www.octaveclothing.com/men';
+
+      const base_url = 'https://asia.pokemon-card.com';
+      const url = base_url + '/id/card-search/list/?pageNo=1&expansionCodes=MA5';
       const result: Record<string, string>[] = [];
 
       const response = await axios.get(url);
-      // const html_data = response.data;
-      // // console.info("🚀 ~ PokemonController ~ index ~ const:", const)
+      const html_data = response.data;
 
-      const $ = load(html_data);
+      const cheerio = load(html_data);
+      // const $ = load(
+      //   `<ul>
+      //     <li>Item 1</li>
+      //     <li>Item 2</li>
+      //     <li>Item 3</li>
+      //     <li>Jangkrek</li>
+      //   </ul>`,
+      // );
 
-      // const keys = ['Title', 'Description', 'Price'];
-      // const selectedElem = '.views-infinite-scroll-content-wrapper > .row > .col-6 > .product-7 > .product-body';
+      // const $ = load(
+      //   `<div class="cards">
 
-      // $(selectedElem).each((parentIndex, parentElem) => {
-      //   let keyIndex = 0;
-      //   const data: Record<string, string> = {};
+      //     <div class="card-item">
+      //       <p>Text 1</p>
+      //     </div>
 
-      //   if (parentIndex) {
-      //     $(parentElem)
-      //       .children()
-      //       .each((_childId, childElem) => {
-      //         const value = $(childElem).text().trim();
-      //         if (value && keys[keyIndex]) {
-      //           data[keys[keyIndex]] = value;
-      //           keyIndex++;
-      //         }
-      //       });
-      //     result.push(data);
-      //   }
-      // });
+      //     <div class="card-item">
+      //       <p>Text 2</p>
+      //     </div>
+
+      //     <div class="card-item">
+      //       <p>Text 3</p>
+      //     </div>
+
+      //     <div class="card-item">
+      //       <p>Card 4</p>
+      //     </div>
+
+      //   </div>`,
+      // );
+
+      // console.log($.html());
+
+      const listItems = cheerio('.card');
+
+      for (const selectedItem of listItems.toArray()) {
+        const item = cheerio(selectedItem);
+        const pokemon_detail_href = item.find('a').attr('href');
+        if (pokemon_detail_href === undefined) continue;
+        const pokemon_detail_url = base_url + pokemon_detail_href;
+        console.log('🚀 ~ PokemonController ~ index ~ pokemon_detail_href:', pokemon_detail_url);
+
+        const response_detail = await axios.get(pokemon_detail_url);
+        const html_detail_data = response_detail.data;
+        const cheerio_detail = load(html_detail_data);
+        cheerio_detail('.evolveMarker').remove();
+        const pokemon_name = cheerio_detail('.cardDetail').text().trim();
+        console.log('🚀 ~ PokemonController ~ index ~ pokemon_name:', pokemon_name);
+      }
 
       return super.success(res, 'success', {
         some_val: 'This is testing',
