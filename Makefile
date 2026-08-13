@@ -17,6 +17,8 @@ build:
 	docker compose build
 
 up:
+	pnpm run dev
+# 	docker compose up -d
 	docker compose up -d
 
 stop:
