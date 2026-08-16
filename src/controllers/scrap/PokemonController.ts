@@ -10,6 +10,7 @@ interface Pokemon {
   type: string;
   regulation: string;
   collector_code: string;
+  image?: string;
 }
 class PokemonController extends Controller {
   private router: Router;
@@ -51,7 +52,6 @@ class PokemonController extends Controller {
         const pokemon_detail_href = item.find('a').attr('href');
         if (pokemon_detail_href === undefined) continue;
         const pokemon_detail_url = base_url + pokemon_detail_href;
-        console.log('🚀 ~ PokemonController ~ index ~ pokemon_detail_href:', pokemon_detail_url);
 
         const response_detail = await axios.get(pokemon_detail_url);
         const html_detail_data = response_detail.data;
@@ -64,7 +64,6 @@ class PokemonController extends Controller {
         const data = cheerio_detail('.cardInformationColumn');
 
         const pokemon_hp = data.find('.number').text();
-        console.log('🚀 ~ PokemonController ~ index ~ data:', cheerio_detail('.alpha').html());
 
         const regulation_code = cheerio_detail('.alpha').text().trim();
         const collector_code = cheerio_detail('.collectorNumber').text().trim();
@@ -85,10 +84,36 @@ class PokemonController extends Controller {
             // statement N
             pokemon_type = 'colorless';
             break;
+          case 'https://asia.pokemon-card.com/various_images/energy/Psychic.png':
+            // statement N
+            pokemon_type = 'psychic';
+            break;
+          case 'https://asia.pokemon-card.com/various_images/energy/Water.png':
+            // statement N
+            pokemon_type = 'water';
+            break;
+          case 'https://asia.pokemon-card.com/various_images/energy/Lightning.png':
+            // statement N
+            pokemon_type = 'lighting';
+            break;
+          case 'https://asia.pokemon-card.com/various_images/energy/Fighting.png':
+            // statement N
+            pokemon_type = 'fighting';
+            break;
+          case 'https://asia.pokemon-card.com/various_images/energy/Darkness.png':
+            // statement N
+            pokemon_type = 'dark';
+            break;
+          case 'https://asia.pokemon-card.com/various_images/energy/Metal.png':
+            // statement N
+            pokemon_type = 'metal';
+            break;
           default:
             pokemon_type = '';
             break;
         }
+
+        const card_image = cheerio_detail('.cardImage').find('img').attr('src');
 
         const pokemon_data: Pokemon = {
           name: pokemon_name,
@@ -97,6 +122,7 @@ class PokemonController extends Controller {
           type: pokemon_type,
           regulation: regulation_code,
           collector_code: collector_code,
+          image: card_image,
         };
 
         result.push(pokemon_data);
