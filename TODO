@@ -1,0 +1,6 @@
+1. Buat scrap dari 1 url dulu, https://asia.pokemon-card.com/id/card-search/list/?pageNo=1&expansionCodes=MA5
+
+2. Scrap semua page yang tersedia di url tsb
+3. Handle simpan data image ke folder, link path folder ke database
+4. Handle 1 kartu dengan banyak image (alternate image ur/sr dst)
+5. Handle skema database kartu pokemon dengan line evolusi (kasih relasi, kegunaan utk query by evo dll)
