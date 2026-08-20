@@ -1,0 +1,52 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table cards {
+  id Int [pk, increment]
+  card_type CardType [not null]
+  name String [not null]
+  evo_type EvolutionType [not null]
+  health_point Int [not null]
+  pokemon_type PokemonType [not null]
+  has_ability Boolean [not null, default: false]
+  expansion_code String [not null]
+  regulation_code String [not null]
+  release_date DateTime
+  description String [default: '']
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [default: `now()`, not null]
+}
+
+Table card_images {
+  id Int [pk, increment]
+  card_id Int [not null]
+  image String
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [default: `now()`, not null]
+}
+
+Enum EvolutionType {
+  BASIC
+  STAGE_1
+  STAGE_2
+}
+
+Enum PokemonType {
+  GRASS
+  FIRE
+  WATER
+  LIGHTING
+  PSYCHIC
+  DARKNESS
+  METAL
+  COLORLESS
+}
+
+Enum CardType {
+  POKEMON
+  SUPPORTER
+  ITEM
+  ENERGY
+  POKEMON_TOOL
+}

@@ -5,6 +5,7 @@ import { load } from 'cheerio';
 import path from 'path';
 import fs from 'fs';
 import { pipeline } from 'stream/promises';
+import { PrismaClient } from '@prisma/client/default';
 
 interface Pokemon {
   name: string;
@@ -17,11 +18,14 @@ interface Pokemon {
 }
 class PokemonController extends Controller {
   private router: Router;
+  private prisma: PrismaClient;
 
   constructor() {
     super();
     this.router = Router();
     this.routes();
+
+    this.prisma = new PrismaClient();
   }
 
   public getRouter(): Router {
@@ -70,6 +74,11 @@ class PokemonController extends Controller {
 
         const regulation_code = cheerio_detail('.alpha').text().trim();
         const collector_code = cheerio_detail('.collectorNumber').text().trim();
+
+        // Jika ada di database, continue
+        // Jika tidak ada lanjut, dan save
+
+        if (this.checkExists(collector_code)) continue;
 
         const pokemon_type_url = data.find('.mainInfomation').find('img').attr('src');
         let pokemon_type = '';
@@ -143,8 +152,17 @@ class PokemonController extends Controller {
     }
   }
 
-  private test() {
+  private async checkExists(card_code: string): Promise<Boolean> {
     console.log('HELOO THIS IS TEST');
+
+    const card = await this.prisma.card.findFirst({
+      where: {
+        expansion_code: card_code,
+      },
+    });
+    console.log('🚀 ~ PokemonController ~ checkExists ~ card:', card);
+
+    return card != null ? true : false;
   }
 
   private async saveImage(url: string) {
