@@ -2,6 +2,9 @@ import axios from 'axios';
 import Controller from '../Controller';
 import { Request, Response, Router } from 'express';
 import { load } from 'cheerio';
+import path from 'path';
+import fs from 'fs';
+import { pipeline } from 'stream/promises';
 
 interface Pokemon {
   name: string;
@@ -26,7 +29,7 @@ class PokemonController extends Controller {
   }
 
   public routes(): void {
-    this.router.get('/', this.index);
+    this.router.get('/', this.index.bind(this));
   }
 
   public async index(req: Request, res: Response): Promise<Response> {
@@ -115,6 +118,8 @@ class PokemonController extends Controller {
 
         const card_image = cheerio_detail('.cardImage').find('img').attr('src');
 
+        await this.saveImage(card_image);
+
         const pokemon_data: Pokemon = {
           name: pokemon_name,
           evolution: pokemon_evo_stage,
@@ -126,8 +131,6 @@ class PokemonController extends Controller {
         };
 
         result.push(pokemon_data);
-
-        console.log('🚀 ~ PokemonController ~ index ~ pokemon_data:', pokemon_data);
       }
 
       return super.success(res, 'success', {
@@ -138,6 +141,42 @@ class PokemonController extends Controller {
       console.error(error.message);
       return super.error(res, 'error', error);
     }
+  }
+
+  private test() {
+    console.log('HELOO THIS IS TEST');
+  }
+
+  private async saveImage(url: string) {
+    console.log('🚀 ~ PokemonController ~ saveImage ~ url:', url);
+
+    let uploadDir = 'public/storage';
+
+    uploadDir = path.join(__dirname, '../../', uploadDir);
+    console.log('🚀 ~ PokemonController ~ saveImage ~ uploadDir:', uploadDir);
+
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+    // Extract extension or fallback to .png
+    const urlWithoutQuery = url.split('?')[0];
+    const ext = path.extname(urlWithoutQuery) || '.png';
+
+    // Generate unique filename
+    const fileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+    const filePath = path.join(uploadDir, fileName);
+    console.log('🚀 ~ PokemonController ~ saveImage ~ filePath:', filePath);
+
+    // Fetch image as stream
+    const response = await axios({
+      url: url,
+      method: 'GET',
+      responseType: 'stream',
+    });
+
+    // Write stream to file
+    await pipeline(response.data, fs.createWriteStream(filePath));
+
+    return `/storage/${fileName}`;
   }
 }
 
