@@ -1,2 +1,0 @@
--- AlterEnum
-ALTER TYPE "CardType" ADD VALUE 'POKEMON_TOOL';

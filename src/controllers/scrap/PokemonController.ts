@@ -5,7 +5,7 @@ import { load } from 'cheerio';
 import path from 'path';
 import fs from 'fs';
 import { pipeline } from 'stream/promises';
-import { PrismaClient } from '@prisma/client/default';
+import { CardType, EvolutionType, PokemonType, PrismaClient } from '@prisma/client';
 
 interface Pokemon {
   name: string;
@@ -63,7 +63,7 @@ class PokemonController extends Controller {
         const response_detail = await axios.get(pokemon_detail_url);
         const html_detail_data = response_detail.data;
         const cheerio_detail = load(html_detail_data);
-        const pokemon_evo_stage = cheerio_detail('.evolveMarker').text().trim();
+        const pokemon_evo_stage = cheerio_detail('.evolveMarker').text().trim().toUpperCase().replace(/\s+/g, '_');
 
         cheerio_detail('.evolveMarker').remove();
 
@@ -78,7 +78,10 @@ class PokemonController extends Controller {
         // Jika ada di database, continue
         // Jika tidak ada lanjut, dan save
 
-        if (this.checkExists(collector_code)) continue;
+        const card_exists = await this.checkExists(collector_code);
+        if (card_exists) {
+          continue;
+        }
 
         const pokemon_type_url = data.find('.mainInfomation').find('img').attr('src');
         let pokemon_type = '';
@@ -127,7 +130,7 @@ class PokemonController extends Controller {
 
         const card_image = cheerio_detail('.cardImage').find('img').attr('src');
 
-        await this.saveImage(card_image);
+        const image_path = await this.saveImage(card_image);
 
         const pokemon_data: Pokemon = {
           name: pokemon_name,
@@ -140,6 +143,26 @@ class PokemonController extends Controller {
         };
 
         result.push(pokemon_data);
+
+        // Save 1 data
+        const card = await this.prisma.card.create({
+          data: {
+            name: pokemon_name,
+            evo_type: pokemon_evo_stage as EvolutionType,
+            health_point: +pokemon_hp,
+            pokemon_type: pokemon_type.toUpperCase() as PokemonType,
+            regulation_code: regulation_code,
+            expansion_code: collector_code,
+            card_type: CardType.POKEMON,
+          },
+        });
+
+        await this.prisma.cardImage.create({
+          data: {
+            card_id: card.id,
+            image: image_path,
+          },
+        });
       }
 
       return super.success(res, 'success', {
@@ -159,6 +182,10 @@ class PokemonController extends Controller {
       where: {
         expansion_code: card_code,
       },
+      // select: {
+      //   id: true,
+      //   name: true,
+      // },
     });
     console.log('🚀 ~ PokemonController ~ checkExists ~ card:', card);
 

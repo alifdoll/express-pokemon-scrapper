@@ -17,6 +17,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+generator client {
+  provider = "prisma-client-js"
+}
+
 model Card {
   id              Int           @id @default(autoincrement())
   card_type       CardType
