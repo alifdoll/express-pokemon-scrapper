@@ -1,24 +1,18 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator dbml {
   provider              = "prisma-dbml-generator"
   output                = "./dbml"
+  manyToMany            = "false"
   outputName            = "schema.dbml"
-  includeRelationFields = false
-  manyToMany            = false
+  includeRelationFields = "false"
+}
+
+generator client {
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-generator client {
-  provider = "prisma-client-js"
 }
 
 model Card {
@@ -32,21 +26,21 @@ model Card {
   expansion_code  String
   regulation_code String
   release_date    DateTime?
-  description     String?       @default("") // Jika item atau supporter, deskripsi ability dari kartu, jika pokemon kosong
-
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now())
+  description     String?       @default("")
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @default(now())
+  images          CardImage[]
 
   @@map("cards")
 }
 
 model CardImage {
-  id      Int     @id @default(autoincrement())
-  card_id Int
-  image   String?
-
+  id         Int      @id @default(autoincrement())
+  card_id    Int
+  image      String?
   created_at DateTime @default(now())
   updated_at DateTime @default(now())
+  card       Card     @relation(fields: [card_id], references: [id])
 
   @@map("card_images")
 }
@@ -66,6 +60,7 @@ enum PokemonType {
   DARKNESS
   METAL
   COLORLESS
+  FIGHTING
 }
 
 enum CardType {

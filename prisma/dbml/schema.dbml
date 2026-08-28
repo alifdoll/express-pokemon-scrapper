@@ -41,6 +41,7 @@ Enum PokemonType {
   DARKNESS
   METAL
   COLORLESS
+  FIGHTING
 }
 
 Enum CardType {
@@ -50,3 +51,5 @@ Enum CardType {
   ENERGY
   POKEMON_TOOL
 }
+
+Ref: card_images.card_id > cards.id

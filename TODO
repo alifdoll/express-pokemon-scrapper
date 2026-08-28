@@ -4,3 +4,5 @@
 3. Handle simpan data image ke folder, link path folder ke database
 4. Handle 1 kartu dengan banyak image (alternate image ur/sr dst)
 5. Handle skema database kartu pokemon dengan line evolusi (kasih relasi, kegunaan utk query by evo dll)
+6. Handle kartu selain pokemon, ignore dulu
+7. Handle kartu selain pokemon, save di db!
