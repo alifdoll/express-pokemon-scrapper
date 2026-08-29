@@ -41,19 +41,19 @@ class PokemonController extends Controller {
       // TODO ERROR, alternate art sudah ke save, tapi ke save lagi ketika akses scrap
       // pokemon chespin ada 2 art, 2 art sudah ke save, ketika akses lagi duplicate, ada 3 data di db, dan folder juga ada 3, 1 ganbar dab 2 gambar sama!
       const request_body = req.body;
-      const test = await this.prisma.card.findFirst({
-        where: {
-          id: 6,
-        },
-        include: {
-          images: true,
-        },
-      });
+      // const test = await this.prisma.card.findMany({
+      //   where: {
+      //     regulation_code: 'J',
+      //   },
+      //   include: {
+      //     images: true,
+      //   },
+      // });
 
-      return super.success(res, 'success', {
-        some_val: 'This is testing',
-        content: test.images,
-      });
+      // return super.success(res, 'success', {
+      //   some_val: 'This is testing',
+      //   content: test,
+      // });
 
       const base_url = 'https://asia.pokemon-card.com';
       let url = base_url + '/id/card-search/list/?pageNo=1&expansionCodes=MA5';
@@ -94,6 +94,7 @@ class PokemonController extends Controller {
         // Jika tidak ada lanjut, dan save
 
         const card_exists = await this.checkExists(collector_code);
+        if (card_exists) continue;
 
         // Handle alternate image??!!;
 
@@ -105,8 +106,8 @@ class PokemonController extends Controller {
         // 1. alternate = true
         // 2. sudah ada
 
-        let is_alternate = await this.isAlternate(collector_code, regulation_code, pokemon_name);
-        if (!is_alternate && card_exists) continue;
+        // let is_alternate = await this.isAlternate(collector_code, regulation_code, pokemon_name);
+        // if (!is_alternate && card_exists) continue;
 
         const pokemon_type_url = data.find('.mainInfomation').find('img').attr('src');
         let pokemon_type = '';
@@ -168,36 +169,19 @@ class PokemonController extends Controller {
         };
 
         result.push(pokemon_data);
-        let card;
 
-        if (is_alternate) {
-          // 1. get data card
-          // 2. tambahkan data image pada data card tsb
+        const card = await this.prisma.card.create({
+          data: {
+            name: pokemon_name,
+            evo_type: pokemon_evo_stage as EvolutionType,
+            health_point: +pokemon_hp,
+            pokemon_type: pokemon_type.toUpperCase() as PokemonType,
+            regulation_code: regulation_code,
+            expansion_code: collector_code,
+            card_type: CardType.POKEMON,
+          },
+        });
 
-          card = await this.prisma.card.findFirst({
-            where: {
-              name: pokemon_name,
-            },
-          });
-        } else {
-          // // Save 1 data
-          card = await this.prisma.card.create({
-            data: {
-              name: pokemon_name,
-              evo_type: pokemon_evo_stage as EvolutionType,
-              health_point: +pokemon_hp,
-              pokemon_type: pokemon_type.toUpperCase() as PokemonType,
-              regulation_code: regulation_code,
-              expansion_code: collector_code,
-              card_type: CardType.POKEMON,
-            },
-          });
-        }
-
-        if (card == null) {
-          console.log('🚀 ~ PokemonController ~ index ~ card:', pokemon_data);
-          console.log('🚀 ~ PokemonController ~ index ~ is_alternate:', is_alternate);
-        }
         // Save image to storage
         const image_path = await this.saveImage(card_image);
 
