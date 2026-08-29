@@ -6,6 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { pipeline } from 'stream/promises';
 import { CardType, EvolutionType, PokemonType, PrismaClient } from '@prisma/client';
+import { randomInt } from 'crypto';
 
 interface Pokemon {
   name: string;
@@ -15,6 +16,7 @@ interface Pokemon {
   regulation: string;
   collector_code: string;
   image?: string;
+  images?: object[];
 }
 class PokemonController extends Controller {
   private router: Router;
@@ -56,142 +58,166 @@ class PokemonController extends Controller {
       // });
 
       const base_url = 'https://asia.pokemon-card.com';
-      let url = base_url + '/id/card-search/list/?pageNo=1&expansionCodes=MA5';
-
-      url = 'https://asia.pokemon-card.com/id/card-search/list/?pageNo=9&expansionCodes=MA5'; // alternate image
+      let page_number = 1;
 
       const result: Pokemon[] = [];
+      // const result = await this.prisma.card.findMany({
+      //   include: {
+      //     images: true,
+      //   },
+      // });
 
-      const response = await axios.get(url);
-      const html_data = response.data;
+      while (true) {
+        let url = base_url + `/id/card-search/list/?pageNo=${page_number}&expansionCodes=MA5`;
+        console.log('🚀 ~ PokemonController ~ Scrapping Page Number:', page_number);
+        page_number++;
 
-      const cheerio = load(html_data);
+        const response = await axios.get(url);
+        const html_data = response.data;
 
-      const listItems = cheerio('.card');
+        const cheerio = load(html_data);
 
-      for (const selectedItem of listItems.toArray()) {
-        const item = cheerio(selectedItem);
-        const pokemon_detail_href = item.find('a').attr('href');
-        if (pokemon_detail_href === undefined) continue;
-        const pokemon_detail_url = base_url + pokemon_detail_href;
+        const not_found = cheerio('.noResult');
+        // console.log('🚀 ~ PokemonController ~ index ~ not_found:', not_found.html());
+        if (not_found.html() != null) {
+          console.log('BREaK');
 
-        const response_detail = await axios.get(pokemon_detail_url);
-        const html_detail_data = response_detail.data;
-        const cheerio_detail = load(html_detail_data);
-        const pokemon_evo_stage = cheerio_detail('.evolveMarker').text().trim().toUpperCase().replace(/\s+/g, '_');
-
-        cheerio_detail('.evolveMarker').remove();
-
-        const pokemon_name = cheerio_detail('.cardDetail').text().trim();
-        const data = cheerio_detail('.cardInformationColumn');
-
-        const pokemon_hp = data.find('.number').text();
-
-        const regulation_code = cheerio_detail('.alpha').text().trim();
-        const collector_code = cheerio_detail('.collectorNumber').text().trim();
-
-        // Jika ada di database, continue
-        // Jika tidak ada lanjut, dan save
-
-        const card_exists = await this.checkExists(collector_code);
-        if (card_exists) continue;
-
-        // Handle alternate image??!!;
-
-        // continue jika
-        // 1. tidak alternate
-        // 2. sudah ada
-
-        // alternate
-        // 1. alternate = true
-        // 2. sudah ada
-
-        // let is_alternate = await this.isAlternate(collector_code, regulation_code, pokemon_name);
-        // if (!is_alternate && card_exists) continue;
-
-        const pokemon_type_url = data.find('.mainInfomation').find('img').attr('src');
-        let pokemon_type = '';
-
-        switch (pokemon_type_url) {
-          case 'https://asia.pokemon-card.com/various_images/energy/Grass.png':
-            // statement 1
-            pokemon_type = 'grass';
-            break;
-          case 'https://asia.pokemon-card.com/various_images/energy/Fire.png':
-            // statement 2
-            pokemon_type = 'fire';
-            break;
-          case 'https://asia.pokemon-card.com/various_images/energy/Colorless.png':
-            // statement N
-            pokemon_type = 'colorless';
-            break;
-          case 'https://asia.pokemon-card.com/various_images/energy/Psychic.png':
-            // statement N
-            pokemon_type = 'psychic';
-            break;
-          case 'https://asia.pokemon-card.com/various_images/energy/Water.png':
-            // statement N
-            pokemon_type = 'water';
-            break;
-          case 'https://asia.pokemon-card.com/various_images/energy/Lightning.png':
-            // statement N
-            pokemon_type = 'lighting';
-            break;
-          case 'https://asia.pokemon-card.com/various_images/energy/Fighting.png':
-            // statement N
-            pokemon_type = 'fighting';
-            break;
-          case 'https://asia.pokemon-card.com/various_images/energy/Darkness.png':
-            // statement N
-            pokemon_type = 'darkness';
-            break;
-          case 'https://asia.pokemon-card.com/various_images/energy/Metal.png':
-            // statement N
-            pokemon_type = 'metal';
-            break;
-          default:
-            pokemon_type = '';
-            break;
+          break;
         }
+        const listItems = cheerio('.card');
 
-        if (+pokemon_hp == 0 && pokemon_type == '') continue;
+        for (const selectedItem of listItems.toArray()) {
+          const item = cheerio(selectedItem);
+          const pokemon_detail_href = item.find('a').attr('href');
+          if (pokemon_detail_href === undefined) continue;
+          const pokemon_detail_url = base_url + pokemon_detail_href;
 
-        const card_image = cheerio_detail('.cardImage').find('img').attr('src');
+          const response_detail = await axios.get(pokemon_detail_url);
+          const html_detail_data = response_detail.data;
+          const cheerio_detail = load(html_detail_data);
+          const pokemon_evo_stage = cheerio_detail('.evolveMarker').text().trim().toUpperCase().replace(/\s+/g, '_');
 
-        const pokemon_data: Pokemon = {
-          name: pokemon_name,
-          evolution: pokemon_evo_stage,
-          hp: +pokemon_hp,
-          type: pokemon_type,
-          regulation: regulation_code,
-          collector_code: collector_code,
-          image: card_image,
-        };
+          cheerio_detail('.evolveMarker').remove();
 
-        result.push(pokemon_data);
+          const pokemon_name = cheerio_detail('.cardDetail').text().trim();
+          const data = cheerio_detail('.cardInformationColumn');
 
-        const card = await this.prisma.card.create({
-          data: {
+          const pokemon_hp = data.find('.number').text();
+
+          const regulation_code = cheerio_detail('.alpha').text().trim();
+          const collector_code = cheerio_detail('.collectorNumber').text().trim();
+
+          // Jika ada di database, continue
+          // Jika tidak ada lanjut, dan save
+
+          const card_exists = await this.checkExists(collector_code);
+          if (card_exists) continue;
+
+          // Handle alternate image??!!;
+
+          // continue jika
+          // 1. tidak alternate
+          // 2. sudah ada
+
+          // alternate
+          // 1. alternate = true
+          // 2. sudah ada
+
+          // let is_alternate = await this.isAlternate(collector_code, regulation_code, pokemon_name);
+          // if (!is_alternate && card_exists) continue;
+
+          const pokemon_type_url = data.find('.mainInfomation').find('img').attr('src');
+          let pokemon_type = '';
+
+          switch (pokemon_type_url) {
+            case 'https://asia.pokemon-card.com/various_images/energy/Grass.png':
+              // statement 1
+              pokemon_type = 'grass';
+              break;
+            case 'https://asia.pokemon-card.com/various_images/energy/Fire.png':
+              // statement 2
+              pokemon_type = 'fire';
+              break;
+            case 'https://asia.pokemon-card.com/various_images/energy/Colorless.png':
+              // statement N
+              pokemon_type = 'colorless';
+              break;
+            case 'https://asia.pokemon-card.com/various_images/energy/Psychic.png':
+              // statement N
+              pokemon_type = 'psychic';
+              break;
+            case 'https://asia.pokemon-card.com/various_images/energy/Water.png':
+              // statement N
+              pokemon_type = 'water';
+              break;
+            case 'https://asia.pokemon-card.com/various_images/energy/Lightning.png':
+              // statement N
+              pokemon_type = 'lighting';
+              break;
+            case 'https://asia.pokemon-card.com/various_images/energy/Fighting.png':
+              // statement N
+              pokemon_type = 'fighting';
+              break;
+            case 'https://asia.pokemon-card.com/various_images/energy/Darkness.png':
+              // statement N
+              pokemon_type = 'darkness';
+              break;
+            case 'https://asia.pokemon-card.com/various_images/energy/Metal.png':
+              // statement N
+              pokemon_type = 'metal';
+              break;
+            default:
+              pokemon_type = '';
+              break;
+          }
+
+          if (+pokemon_hp == 0 && pokemon_type == '') continue;
+
+          const card_image = cheerio_detail('.cardImage').find('img').attr('src');
+
+          const pokemon_data: Pokemon = {
             name: pokemon_name,
-            evo_type: pokemon_evo_stage as EvolutionType,
-            health_point: +pokemon_hp,
-            pokemon_type: pokemon_type.toUpperCase() as PokemonType,
-            regulation_code: regulation_code,
-            expansion_code: collector_code,
-            card_type: CardType.POKEMON,
-          },
-        });
+            evolution: pokemon_evo_stage,
+            hp: +pokemon_hp,
+            type: pokemon_type,
+            regulation: regulation_code,
+            collector_code: collector_code,
+            images: [
+              {
+                id: page_number + randomInt(5),
+                card_id: page_number + randomInt(10),
+                image: card_image,
+                // created_at: now(),
+                // updated_at: now(),
+              },
+            ],
+          };
 
-        // Save image to storage
-        const image_path = await this.saveImage(card_image);
+          result.push(pokemon_data);
 
-        // Save the path
-        await this.prisma.cardImage.create({
-          data: {
-            card_id: card.id,
-            image: image_path,
-          },
-        });
+          // const card = await this.prisma.card.create({
+          //   data: {
+          //     name: pokemon_name,
+          //     evo_type: pokemon_evo_stage as EvolutionType,
+          //     health_point: +pokemon_hp,
+          //     pokemon_type: pokemon_type.toUpperCase() as PokemonType,
+          //     regulation_code: regulation_code,
+          //     expansion_code: collector_code,
+          //     card_type: CardType.POKEMON,
+          //   },
+          // });
+
+          // // Save image to storage
+          // const image_path = await this.saveImage(card_image);
+
+          // // Save the path
+          // await this.prisma.cardImage.create({
+          //   data: {
+          //     card_id: card.id,
+          //     image: image_path,
+          //   },
+          // });
+        }
       }
 
       return super.success(res, 'success', {
