@@ -6,10 +6,10 @@ Table cards {
   id Int [pk, increment]
   card_type CardType [not null]
   name String [not null]
-  evo_type EvolutionType [not null]
-  health_point Int [not null]
-  pokemon_type PokemonType [not null]
-  has_ability Boolean [not null, default: false]
+  evo_type EvolutionType
+  health_point Int
+  pokemon_type PokemonType
+  has_ability Boolean [default: false]
   expansion_code String [not null]
   regulation_code String [not null]
   release_date DateTime
