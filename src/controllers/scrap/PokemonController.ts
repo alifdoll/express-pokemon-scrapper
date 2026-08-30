@@ -43,29 +43,12 @@ class PokemonController extends Controller {
       // TODO ERROR, alternate art sudah ke save, tapi ke save lagi ketika akses scrap
       // pokemon chespin ada 2 art, 2 art sudah ke save, ketika akses lagi duplicate, ada 3 data di db, dan folder juga ada 3, 1 ganbar dab 2 gambar sama!
       const request_body = req.body;
-      // const test = await this.prisma.card.findMany({
-      //   where: {
-      //     regulation_code: 'J',
-      //   },
-      //   include: {
-      //     images: true,
-      //   },
-      // });
-
-      // return super.success(res, 'success', {
-      //   some_val: 'This is testing',
-      //   content: test,
-      // });
 
       const base_url = 'https://asia.pokemon-card.com';
       let page_number = 1;
 
-      const result: Pokemon[] = [];
-      // const result = await this.prisma.card.findMany({
-      //   include: {
-      //     images: true,
-      //   },
-      // });
+      // URL GET LIST EXPANSI CODE = https://asia.pokemon-card.com/id/card-search/
+      // AMBIL EXPANSI CODE DARI URL TSB, SIMPAN DB???
 
       while (true) {
         let url = base_url + `/id/card-search/list/?pageNo=${page_number}&expansionCodes=MA5`;
@@ -80,7 +63,7 @@ class PokemonController extends Controller {
         const not_found = cheerio('.noResult');
         // console.log('🚀 ~ PokemonController ~ index ~ not_found:', not_found.html());
         if (not_found.html() != null) {
-          console.log('BREaK');
+          console.log('Break');
 
           break;
         }
@@ -97,17 +80,19 @@ class PokemonController extends Controller {
           const html_detail_data = response_detail.data;
           const cheerio_detail = load(html_detail_data);
 
+          const pokemon_type = this.checkPokemonType(cheerio_detail);
           const card_type = cheerio_detail('.commonHeader').text().trim();
+
           if (card_type != 'Item' && card_type != 'Pokémon Tool' && card_type != 'Supporter' && card_type != 'Stadium') {
-            // Save Pokemon
-            this.savePokemon(cheerio_detail);
+            if (pokemon_type == '') {
+              this.saveEnergy(cheerio_detail);
+            } else {
+              // Save Pokemon
+              this.savePokemon(cheerio_detail);
+            }
           } else {
             this.saveSupporter(cheerio_detail);
           }
-
-          // console.log('🚀 ~ PokemonController ~ index ~ card_type:', card_type);
-
-          // result.push(pokemon_data);
         }
       }
 
@@ -200,25 +185,8 @@ class PokemonController extends Controller {
     return card != null ? true : false;
   }
 
-  private async savePokemon(cheerio_detail: any) {
-    const pokemon_evo_stage = cheerio_detail('.evolveMarker').text().trim().toUpperCase().replace(/\s+/g, '_');
-
-    cheerio_detail('.evolveMarker').remove();
-
-    const pokemon_name = cheerio_detail('.cardDetail').text().trim();
+  private checkPokemonType(cheerio_detail: any) {
     const data = cheerio_detail('.cardInformationColumn');
-
-    const pokemon_hp = data.find('.number').text();
-
-    const regulation_code = cheerio_detail('.alpha').text().trim();
-    const collector_code = cheerio_detail('.collectorNumber').text().trim();
-
-    // Jika ada di database, continue
-    // Jika tidak ada lanjut, dan save
-
-    const card_exists = await this.checkExists(collector_code);
-    if (card_exists) return;
-
     const pokemon_type_url = data.find('.mainInfomation').find('img').attr('src');
     let pokemon_type = '';
 
@@ -259,13 +227,43 @@ class PokemonController extends Controller {
         // statement N
         pokemon_type = 'metal';
         break;
+      case 'https://asia.pokemon-card.com/various_images/energy/Dragon.png':
+        // statement N
+        pokemon_type = 'dragon';
+        break;
       default:
         pokemon_type = '';
         break;
     }
 
+    return pokemon_type;
+  }
+
+  private async savePokemon(cheerio_detail: any) {
+    const pokemon_evo_stage = cheerio_detail('.evolveMarker').text().trim().toUpperCase().replace(/\s+/g, '_');
+
+    cheerio_detail('.evolveMarker').remove();
+
+    const pokemon_name = cheerio_detail('.cardDetail').text().trim();
+    const data = cheerio_detail('.cardInformationColumn');
+
+    const pokemon_hp = data.find('.number').text();
+
+    const regulation_code = cheerio_detail('.alpha').text().trim();
+    const collector_code = cheerio_detail('.collectorNumber').text().trim();
+
+    // Jika ada di database, continue
+    // Jika tidak ada lanjut, dan save
+
+    const card_exists = await this.checkExists(collector_code);
+    if (card_exists) return;
+
+    const pokemon_type = this.checkPokemonType(cheerio_detail);
+
     // Kartu Energi!
     if (+pokemon_hp == 0 && pokemon_type == '') return;
+
+    console.log('🚀 ~ PokemonController ~ SavePokemon ~ Saving Pokemon Card!!');
 
     const card_image = cheerio_detail('.cardImage').find('img').attr('src');
 
@@ -300,7 +298,14 @@ class PokemonController extends Controller {
     const regulation_code = cheerio_detail('.alpha').text().trim();
     const collector_code = cheerio_detail('.collectorNumber').text().trim();
     const description = cheerio_detail('.skillEffect').text().trim();
-    const card_type = cheerio_detail('.commonHeader').text().trim().toUpperCase();
+    let card_type = cheerio_detail('.commonHeader').text().trim().toUpperCase().replace(/\s+/g, '_');
+    if (card_type == 'POKÉMON_TOOL') {
+      card_type = 'POKEMON_TOOL';
+    }
+
+    const card_exists = await this.checkExists(collector_code);
+    if (card_exists) return;
+    console.log('🚀 ~ PokemonController ~ saveSupporter ~ Saving Trainer Card!!');
 
     const card = await this.prisma.card.create({
       data: {
@@ -309,6 +314,41 @@ class PokemonController extends Controller {
         expansion_code: collector_code,
         description: description,
         card_type: card_type as CardType,
+      },
+    });
+
+    // Save image to storage
+    const image_path = await this.saveImage(card_image);
+
+    // Save the path
+    await this.prisma.cardImage.create({
+      data: {
+        card_id: card.id,
+        image: image_path,
+      },
+    });
+  }
+
+  private async saveEnergy(cheerio_detail: any) {
+    const card_image = cheerio_detail('.cardImage').find('img').attr('src');
+    const card_name = cheerio_detail('.cardDetail').text().trim();
+
+    const regulation_code = cheerio_detail('.alpha').text().trim();
+    const collector_code = cheerio_detail('.collectorNumber').text().trim();
+    const description = cheerio_detail('.skillEffect').text().trim();
+    const card_type = CardType.ENERGY;
+
+    const card_exists = await this.checkExists(collector_code);
+    if (card_exists) return;
+    console.log('🚀 ~ PokemonController ~ saveSupporter ~ Saving Energy Card!!');
+
+    const card = await this.prisma.card.create({
+      data: {
+        name: card_name,
+        regulation_code: regulation_code,
+        expansion_code: collector_code,
+        description: description,
+        card_type: card_type,
       },
     });
 

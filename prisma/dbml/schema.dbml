@@ -42,6 +42,7 @@ Enum PokemonType {
   METAL
   COLORLESS
   FIGHTING
+  DRAGON
 }
 
 Enum CardType {
@@ -50,6 +51,7 @@ Enum CardType {
   ITEM
   ENERGY
   POKEMON_TOOL
+  STADIUM
 }
 
 Ref: card_images.card_id > cards.id

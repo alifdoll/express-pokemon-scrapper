@@ -61,6 +61,7 @@ enum PokemonType {
   METAL
   COLORLESS
   FIGHTING
+  DRAGON
 }
 
 enum CardType {
@@ -69,4 +70,5 @@ enum CardType {
   ITEM
   ENERGY
   POKEMON_TOOL
+  STADIUM
 }
