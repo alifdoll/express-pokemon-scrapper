@@ -115,42 +115,56 @@ class PokemonController extends Controller {
 
   public async getExpansionCode(req: Request, res: Response): Promise<Response> {
     try {
-      const base_url = 'https://asia.pokemon-card.com/id/card-search/';
+      let base_url = 'https://asia.pokemon-card.com/id/card-search/';
+      let page_number = 1;
+      let number_scrapped = 0;
 
-      const response = await axios.get(base_url);
-      const html_data = response.data;
+      while (true) {
+        let url = base_url + `?pageNo=${page_number}`;
+        console.log('🚀 ~ PokemonController ~ getExpansionCode ~ url:', url);
+        page_number++;
 
-      const cheerio = load(html_data);
+        const response = await axios.get(url);
+        const html_data = response.data;
 
-      const expansion_code_urls = cheerio('.expansionLink');
+        const cheerio = load(html_data);
 
-      for (const urls of expansion_code_urls.toArray()) {
-        let data = cheerio(urls);
-        let release_date = data.find('.relaseDate').text().trim();
+        const listItems = cheerio('.expansionList li').toArray();
+        if (listItems.length == 0) break;
 
-        let expansion_code_url = data.attr('href');
-        const expansion_code = expansion_code_url.match(/expansionCodes=([^?&]+)/)?.[1];
+        const expansion_code_urls = cheerio('.expansionLink');
 
-        const check = await this.prisma.expansionCode.findFirst({
-          where: {
-            code: expansion_code,
-          },
-        });
+        for (const urls of expansion_code_urls.toArray()) {
+          let data = cheerio(urls);
+          let release_date = data.find('.relaseDate').text().trim();
 
-        if (check != null) continue;
+          let expansion_code_url = data.attr('href');
+          const expansion_code = expansion_code_url.match(/expansionCodes=([^?&]+)/)?.[1];
 
-        await this.prisma.expansionCode.create({
-          data: {
-            code: expansion_code,
-            release_date: new Date(release_date),
-          },
-        });
+          const check = await this.prisma.expansionCode.findFirst({
+            where: {
+              code: expansion_code,
+            },
+          });
+
+          if (check != null) continue;
+
+          await this.prisma.expansionCode.create({
+            data: {
+              code: expansion_code,
+              release_date: new Date(release_date),
+            },
+          });
+
+          number_scrapped++;
+        }
       }
 
       const result = await this.prisma.expansionCode.findMany();
 
       return super.success(res, 'success', {
         some_val: 'This is testing',
+        scrapped_count: number_scrapped,
         content: result,
       });
     } catch (error: any) {
