@@ -36,6 +36,7 @@ class PokemonController extends Controller {
 
   public routes(): void {
     this.router.get('/', this.index.bind(this));
+    this.router.get('/codes', this.getExpansionCode.bind(this));
   }
 
   public async index(req: Request, res: Response): Promise<Response> {
@@ -105,6 +106,52 @@ class PokemonController extends Controller {
       return super.success(res, 'success', {
         some_val: 'This is testing',
         content: cards,
+      });
+    } catch (error: any) {
+      console.error(error.message);
+      return super.error(res, 'error', error);
+    }
+  }
+
+  public async getExpansionCode(req: Request, res: Response): Promise<Response> {
+    try {
+      const base_url = 'https://asia.pokemon-card.com/id/card-search/';
+
+      const response = await axios.get(base_url);
+      const html_data = response.data;
+
+      const cheerio = load(html_data);
+
+      const expansion_code_urls = cheerio('.expansionLink');
+
+      for (const urls of expansion_code_urls.toArray()) {
+        let data = cheerio(urls);
+        let release_date = data.find('.relaseDate').text().trim();
+
+        let expansion_code_url = data.attr('href');
+        const expansion_code = expansion_code_url.match(/expansionCodes=([^?&]+)/)?.[1];
+
+        const check = await this.prisma.expansionCode.findFirst({
+          where: {
+            code: expansion_code,
+          },
+        });
+
+        if (check != null) continue;
+
+        await this.prisma.expansionCode.create({
+          data: {
+            code: expansion_code,
+            release_date: new Date(release_date),
+          },
+        });
+      }
+
+      const result = await this.prisma.expansionCode.findMany();
+
+      return super.success(res, 'success', {
+        some_val: 'This is testing',
+        content: result,
       });
     } catch (error: any) {
       console.error(error.message);

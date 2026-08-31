@@ -26,6 +26,15 @@ Table card_images {
   updated_at DateTime [default: `now()`, not null]
 }
 
+Table expansion_codes {
+  id Int [pk, increment]
+  code String
+  release_date DateTime
+  scrapped Boolean [not null, default: false]
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [default: `now()`, not null]
+}
+
 Enum EvolutionType {
   BASIC
   STAGE_1
