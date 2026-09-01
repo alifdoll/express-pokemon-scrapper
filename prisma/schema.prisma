@@ -61,6 +61,7 @@ enum EvolutionType {
   BASIC
   STAGE_1
   STAGE_2
+  OTHER
 }
 
 enum PokemonType {
@@ -74,6 +75,7 @@ enum PokemonType {
   COLORLESS
   FIGHTING
   DRAGON
+  OTHER
 }
 
 enum CardType {

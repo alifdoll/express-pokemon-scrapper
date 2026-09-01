@@ -37,65 +37,12 @@ class PokemonController extends Controller {
   public routes(): void {
     this.router.get('/', this.index.bind(this));
     this.router.get('/codes', this.getExpansionCode.bind(this));
+    this.router.get('/cards', this.getPokemonCards.bind(this));
   }
 
   public async index(req: Request, res: Response): Promise<Response> {
     try {
-      // TODO ERROR, alternate art sudah ke save, tapi ke save lagi ketika akses scrap
-      // pokemon chespin ada 2 art, 2 art sudah ke save, ketika akses lagi duplicate, ada 3 data di db, dan folder juga ada 3, 1 ganbar dab 2 gambar sama!
       const request_body = req.body;
-
-      const base_url = 'https://asia.pokemon-card.com';
-      let page_number = 1;
-
-      // URL GET LIST EXPANSI CODE = https://asia.pokemon-card.com/id/card-search/
-      // AMBIL EXPANSI CODE DARI URL TSB, SIMPAN DB???
-
-      while (true) {
-        let url = base_url + `/id/card-search/list/?pageNo=${page_number}&expansionCodes=MA5`;
-        console.log('🚀 ~ PokemonController ~ Scrapping Page Number:', page_number);
-        page_number++;
-
-        const response = await axios.get(url);
-        const html_data = response.data;
-
-        const cheerio = load(html_data);
-
-        const not_found = cheerio('.noResult');
-        // console.log('🚀 ~ PokemonController ~ index ~ not_found:', not_found.html());
-        if (not_found.html() != null) {
-          console.log('Break');
-
-          break;
-        }
-        const listItems = cheerio('.card');
-
-        for (const selectedItem of listItems.toArray()) {
-          const item = cheerio(selectedItem);
-
-          const pokemon_detail_href = item.find('a').attr('href');
-          if (pokemon_detail_href === undefined) continue;
-          const pokemon_detail_url = base_url + pokemon_detail_href;
-
-          const response_detail = await axios.get(pokemon_detail_url);
-          const html_detail_data = response_detail.data;
-          const cheerio_detail = load(html_detail_data);
-
-          const pokemon_type = this.checkPokemonType(cheerio_detail);
-          const card_type = cheerio_detail('.commonHeader').text().trim();
-
-          if (card_type != 'Item' && card_type != 'Pokémon Tool' && card_type != 'Supporter' && card_type != 'Stadium') {
-            if (pokemon_type == '') {
-              this.saveEnergy(cheerio_detail);
-            } else {
-              // Save Pokemon
-              this.savePokemon(cheerio_detail);
-            }
-          } else {
-            this.saveSupporter(cheerio_detail);
-          }
-        }
-      }
 
       const cards = await this.prisma.card.findMany({
         include: {
@@ -104,7 +51,6 @@ class PokemonController extends Controller {
       });
 
       return super.success(res, 'success', {
-        some_val: 'This is testing',
         content: cards,
       });
     } catch (error: any) {
@@ -172,6 +118,76 @@ class PokemonController extends Controller {
       return super.error(res, 'error', error);
     }
   }
+
+  public async getPokemonCards(req: Request, res: Response): Promise<Response> {
+    try {
+      const expansion_codes = await this.prisma.expansionCode.findMany();
+
+      for (const code of expansion_codes) {
+        const base_url = 'https://asia.pokemon-card.com';
+        let page_number = 1;
+        let expansion_code = code.code;
+
+        while (true) {
+          let url = base_url + `/id/card-search/list/?pageNo=${page_number}&expansionCodes=${expansion_code}`;
+          page_number++;
+
+          const response = await axios.get(url);
+          const html_data = response.data;
+
+          const cheerio = load(html_data);
+          console.log('🚀 ~ Waiting');
+          await this.randomSleep();
+
+          const not_found = cheerio('.noResult');
+          if (not_found.html() != null) {
+            break;
+          }
+          const listItems = cheerio('.card');
+
+          for (const selectedItem of listItems.toArray()) {
+            const item = cheerio(selectedItem);
+
+            const pokemon_detail_href = item.find('a').attr('href');
+            if (pokemon_detail_href === undefined) continue;
+            const pokemon_detail_url = base_url + pokemon_detail_href;
+
+            const response_detail = await axios.get(pokemon_detail_url);
+            const html_detail_data = response_detail.data;
+            const cheerio_detail = load(html_detail_data);
+
+            const pokemon_type = this.checkPokemonType(cheerio_detail);
+            const card_type = cheerio_detail('.commonHeader').text().trim();
+
+            if (card_type != 'Item' && card_type != 'Pokémon Tool' && card_type != 'Supporter' && card_type != 'Stadium') {
+              if (pokemon_type == '') {
+                this.saveEnergy(cheerio_detail);
+              } else {
+                // Save Pokemon
+                this.savePokemon(cheerio_detail);
+              }
+            } else {
+              this.saveSupporter(cheerio_detail);
+            }
+          }
+        }
+      }
+
+      const cards = await this.prisma.card.findMany({
+        include: {
+          images: true,
+        },
+      });
+
+      return super.success(res, 'success', {
+        content: cards,
+      });
+    } catch (error: any) {
+      console.error(error.message);
+      return super.error(res, 'error', error);
+    }
+  }
+  // ======================================
 
   private async checkExists(card_code: string): Promise<Boolean> {
     const card = await this.prisma.card.findFirst({
@@ -297,11 +313,15 @@ class PokemonController extends Controller {
         break;
     }
 
+    if (pokemon_type == 'LAINNYA') {
+      pokemon_type = PokemonType.OTHER;
+    }
     return pokemon_type;
   }
 
   private async savePokemon(cheerio_detail: any) {
-    const pokemon_evo_stage = cheerio_detail('.evolveMarker').text().trim().toUpperCase().replace(/\s+/g, '_');
+    let pokemon_evo_stage = cheerio_detail('.evolveMarker').text().trim().toUpperCase().replace(/\s+/g, '_');
+    pokemon_evo_stage = pokemon_evo_stage == 'LAINNYA' ? EvolutionType.OTHER : pokemon_evo_stage;
 
     cheerio_detail('.evolveMarker').remove();
 
@@ -323,8 +343,8 @@ class PokemonController extends Controller {
 
     // Kartu Energi!
     if (+pokemon_hp == 0 && pokemon_type == '') return;
+    console.log('🚀 ~ PokemonController ~ savePokemon ~ Saving Pokemon Card!!');
 
-    console.log('🚀 ~ PokemonController ~ SavePokemon ~ Saving Pokemon Card!!');
 
     const card_image = cheerio_detail('.cardImage').find('img').attr('src');
 
@@ -423,6 +443,12 @@ class PokemonController extends Controller {
         image: image_path,
       },
     });
+  }
+
+  // Define it as a clean helper method on your class
+  private randomSleep(minMs: number = 3000, maxMs: number = 4000): Promise<void> {
+    const delay = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+    return new Promise((resolve) => setTimeout(resolve, delay));
   }
 }
 
