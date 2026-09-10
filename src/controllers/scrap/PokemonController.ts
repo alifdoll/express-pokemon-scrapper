@@ -7,6 +7,7 @@ import fs from 'fs';
 import { pipeline } from 'stream/promises';
 import { CardType, EvolutionType, PokemonType, PrismaClient } from '@prisma/client';
 import { randomInt } from 'crypto';
+import { inngest } from '../../jobs/PokemonJobs';
 
 interface Pokemon {
   name: string;
@@ -21,6 +22,7 @@ interface Pokemon {
 class PokemonController extends Controller {
   private router: Router;
   private prisma: PrismaClient;
+  // private inngest: Inngest;
 
   constructor() {
     super();
@@ -28,6 +30,8 @@ class PokemonController extends Controller {
     this.routes();
 
     this.prisma = new PrismaClient();
+
+    // this.inngest = inngest;
   }
 
   public getRouter(): Router {
@@ -48,6 +52,10 @@ class PokemonController extends Controller {
         include: {
           images: true,
         },
+      });
+
+      await inngest.send({
+        name: 'test-job',
       });
 
       return super.success(res, 'success', {
@@ -171,6 +179,15 @@ class PokemonController extends Controller {
             }
           }
         }
+
+        await this.prisma.expansionCode.update({
+          where: {
+            id: code.id,
+          },
+          data: {
+            scrapped: true,
+          },
+        });
       }
 
       const cards = await this.prisma.card.findMany({
@@ -200,7 +217,7 @@ class PokemonController extends Controller {
   }
 
   private async saveImage(url: string) {
-    let uploadDir = 'public/storage';
+    let uploadDir = 'public/storage/images';
 
     uploadDir = path.join(__dirname, '../../', uploadDir);
 
@@ -344,7 +361,6 @@ class PokemonController extends Controller {
     // Kartu Energi!
     if (+pokemon_hp == 0 && pokemon_type == '') return;
     console.log('🚀 ~ PokemonController ~ savePokemon ~ Saving Pokemon Card!!');
-
 
     const card_image = cheerio_detail('.cardImage').find('img').attr('src');
 
