@@ -1,4 +1,7 @@
+import { PrismaClient } from '@prisma/client';
 import { Inngest } from 'inngest';
+
+const prisma = new PrismaClient();
 
 export const inngest = new Inngest({
   id: 'my-app',
@@ -12,4 +15,10 @@ const test = inngest.createFunction({ id: 'my-app', triggers: [{ event: 'test-jo
   return { message: `Hello This is test job!` };
 });
 
-export const functions = [test];
+const scrap_expansion_codes = inngest.createFunction({ id: 'poke-scrap', triggers: [{ event: 'scrap-code' }] }, async ({ event, step }) => {
+  const test = await prisma.expansionCode.findMany();
+  console.log(test);
+  return { message: 'finish scrapping expansion codes' };
+});
+
+export const functions = [test, scrap_expansion_codes];

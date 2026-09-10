@@ -55,7 +55,7 @@ class PokemonController extends Controller {
       });
 
       await inngest.send({
-        name: 'test-job',
+        name: 'scrap-code',
       });
 
       return super.success(res, 'success', {

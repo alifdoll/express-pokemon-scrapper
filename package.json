@@ -4,6 +4,7 @@
   "description": "Express typescript.",
   "scripts": {
     "dev": "ts-node-dev --respawn ./src/app.ts",
+    "inngest-dev": "npx inngest-cli@latest dev -u http://localhost:3002/api/inngest",
     "build": "tsc",
     "postbuild": "tsx ./src/helpers/SymbolicLink.ts",
     "start": "node ./build/app.js",

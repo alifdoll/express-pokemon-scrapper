@@ -22,7 +22,7 @@ up:
 # 	docker compose up -d
 
 inngest:
-	npx inngest-cli@latest dev -u http://localhost:3002/api/inngest
+	pnpm run inngest-dev
 
 stop:
 	docker-compose stop
