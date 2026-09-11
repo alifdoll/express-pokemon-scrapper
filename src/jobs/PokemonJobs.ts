@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { Inngest } from 'inngest';
+import { PokemonScrapService } from '../services/PokemonScrapService';
 
 const prisma = new PrismaClient();
 
@@ -16,9 +17,14 @@ const test = inngest.createFunction({ id: 'my-app', triggers: [{ event: 'test-jo
 });
 
 const scrap_expansion_codes = inngest.createFunction({ id: 'poke-scrap', triggers: [{ event: 'scrap-code' }] }, async ({ event, step }) => {
-  const test = await prisma.expansionCode.findMany();
-  console.log(test);
-  return { message: 'finish scrapping expansion codes' };
+  await PokemonScrapService.scrapExpansionCode();
+
+  return { message: 'scrapping expansion codes' };
 });
 
-export const functions = [test, scrap_expansion_codes];
+const scrap_cards = inngest.createFunction({ id: 'poke-card-scrap', triggers: [{ event: 'scrap-card' }] }, async ({ event, step }) => {
+  await PokemonScrapService.scrapCards(step);
+  return { message: 'Scrapping Cards' };
+});
+
+export const functions = [test, scrap_expansion_codes, scrap_cards];
