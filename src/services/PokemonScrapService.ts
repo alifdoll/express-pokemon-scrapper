@@ -6,13 +6,16 @@ import { load } from 'cheerio';
 import { prisma as prismaClient } from '../helpers/Prisma';
 import { CardType, EvolutionType, PokemonType } from '@prisma/client';
 
-const base_url = 'https://asia.pokemon-card.com/id/';
+// const base_url = 'https://asia.pokemon-card.com/id/';
+const base_url = 'https://asia.pokemon-card.com';
 const prisma = prismaClient;
+
+const delay = (ms: any) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const saveImage = async (url: string) => {
   let uploadDir = 'public/storage/images';
 
-  uploadDir = path.join(__dirname, '../../', uploadDir);
+  uploadDir = path.join(__dirname, '../', uploadDir);
 
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -34,7 +37,7 @@ const saveImage = async (url: string) => {
 };
 
 const scrapExpansionCode = async () => {
-  let code_base_url = base_url + 'card-search';
+  let code_base_url = base_url + '/id/card-search';
   let page_number = 1;
   let number_scrapped = 0;
 
@@ -84,37 +87,40 @@ const scrapExpansionCode = async () => {
 
 const scrapCards = async (step: any) => {
   try {
-    const expansion_codes = await prisma.expansionCode.findMany();
-    console.log('🚀 ~ Scrapping Pokemon Cards ~');
+    const expansion_codes = await prisma.expansionCode.findMany({
+      where: {
+        scrapped: false,
+      },
+    });
+
+    console.log('🎴 ~ Scrapping Pokemon Cards ~');
 
     for (const code of expansion_codes) {
       let page_number = 1;
       let expansion_code = code.code;
-      console.log('🚀 ~ Scrapping Cards , Expansion Code :', expansion_code);
+      console.log('🃏 ~ Scrapping Cards , Expansion Code :', expansion_code);
 
       while (true) {
-        let url = base_url + `card-search/list/?pageNo=${page_number}&expansionCodes=${expansion_code}`;
-        console.log('🚀 ~ scrapCards ~ URL:', url);
+        let url = base_url + `/id/card-search/list/?pageNo=${page_number}&expansionCodes=${expansion_code}`;
+        console.log('🃏 ~ scrapCards ~ page_number:', page_number);
 
         page_number++;
 
         const response = await axios.get(url);
+
         const html_data = response.data;
 
         const cheerio = load(html_data);
 
-        // 3. THE SAFE DELAY
-        // Calculate a random sleep between 3 and 4 seconds
         const delayMs = Math.floor(Math.random() * (4000 - 3000 + 1)) + 3000;
-
-        // Use a dynamic ID string that includes the current page and expansion
-        // await step.sleep(`sleep-before-next-page-${expansion_code}-${page_number}`, `${delayMs}ms`);
-        // ===================
-        // await randomSleep();
-        // ===================
+        console.log(`Wait for ${delayMs}ms.....`);
+        await delay(delayMs);
 
         const not_found = cheerio('.noResult');
+
         if (not_found.html() != null) {
+          console.log('KOK BREAK');
+
           break;
         }
         const listItems = cheerio('.card');
@@ -146,6 +152,8 @@ const scrapCards = async (step: any) => {
         }
       }
 
+      console.log('CODE SCRAPPED!!');
+
       await prisma.expansionCode.update({
         where: {
           id: code.id,
@@ -154,6 +162,8 @@ const scrapCards = async (step: any) => {
           scrapped: true,
         },
       });
+
+      // break;
     }
   } catch (error: any) {
     console.error(error.message);
