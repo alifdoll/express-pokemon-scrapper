@@ -3,12 +3,12 @@ import fs from 'fs';
 import axios from 'axios';
 import { pipeline } from 'stream/promises';
 import { load } from 'cheerio';
-import { prisma as prismaClient } from '../helpers/Prisma';
+import { prismaHelper } from '../helpers/PrismaHelpers';
 import { CardType, EvolutionType, PokemonType } from '@prisma/client';
 
 // const base_url = 'https://asia.pokemon-card.com/id/';
 const base_url = 'https://asia.pokemon-card.com';
-const prisma = prismaClient;
+const prisma = prismaHelper;
 
 const delay = (ms: any) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -152,7 +152,7 @@ const scrapCards = async (step: any) => {
         }
       }
 
-      console.log('CODE SCRAPPED!!');
+      console.log('✅✅ Done Scrapping Card Expansion : ', expansion_code);
 
       await prisma.expansionCode.update({
         where: {

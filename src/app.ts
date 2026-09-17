@@ -14,9 +14,10 @@ import moment from 'moment';
 // import MulterMiddleware from './middlewares/MulterMiddleware';
 
 import { ApiKeyMiddleware, MulterMiddleware } from './middlewares';
-import { PokemonController } from './controllers';
-import { inngest, functions } from './jobs/PokemonJobs';
+import { inngestPokemon, functions } from './jobs/PokemonJobs';
 import { serve } from 'inngest/express';
+import ScrapController from './controllers/scrap/ScrapController';
+import PokemonController from './controllers/pokemon/PokemonController';
 
 class App {
   public app: Application;
@@ -70,9 +71,12 @@ class App {
 
   public routes(): void {
     // this.app.use("/v1/debitur/restructures", AuthMiddleware, RestructureController);
+
+    this.app.use('/scrap', ApiKeyMiddleware, ScrapController);
     this.app.use('/pokemon', ApiKeyMiddleware, PokemonController);
 
-    this.app.use('/api/inngest', express.json(), serve({ client: inngest, functions }));
+    // For inngest background jobs
+    this.app.use('/api/inngest', express.json(), serve({ client: inngestPokemon, functions }));
 
     // dont change this route (for unknown route, send 404 response)
     this.app.all('*', (req: Request, res: Response) => {
