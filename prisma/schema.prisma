@@ -24,12 +24,14 @@ model Card {
   pokemon_type    PokemonType?
   has_ability     Boolean?       @default(false)
   expansion_code  String
+  collector_code  String
   regulation_code String
   release_date    DateTime?
   description     String?        @default("")
   created_at      DateTime       @default(now())
   updated_at      DateTime       @default(now())
-  images          CardImage[]
+
+  images CardImage[]
 
   @@map("cards")
 }

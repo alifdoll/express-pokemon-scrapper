@@ -141,13 +141,13 @@ const scrapCards = async (step: any) => {
 
           if (card_type != 'Item' && card_type != 'Pokémon Tool' && card_type != 'Supporter' && card_type != 'Stadium') {
             if (pokemon_type == '') {
-              saveEnergy(cheerio_detail);
+              saveEnergy(cheerio_detail, expansion_code);
             } else {
               // Save Pokemon
-              savePokemon(cheerio_detail);
+              savePokemon(cheerio_detail, expansion_code);
             }
           } else {
-            saveSupporter(cheerio_detail);
+            saveSupporter(cheerio_detail, expansion_code);
           }
         }
       }
@@ -237,7 +237,7 @@ const checkExists = async (card_code: string) => {
   return card != null ? true : false;
 };
 
-const savePokemon = async (cheerio_detail: any) => {
+const savePokemon = async (cheerio_detail: any, expansion_code: string) => {
   let pokemon_evo_stage = cheerio_detail('.evolveMarker').text().trim().toUpperCase().replace(/\s+/g, '_');
   pokemon_evo_stage = pokemon_evo_stage == 'LAINNYA' ? EvolutionType.OTHER : pokemon_evo_stage;
 
@@ -272,7 +272,8 @@ const savePokemon = async (cheerio_detail: any) => {
       health_point: +pokemon_hp,
       pokemon_type: pokemon_type.toUpperCase() as PokemonType,
       regulation_code: regulation_code,
-      expansion_code: collector_code,
+      expansion_code: expansion_code,
+      collector_code: collector_code,
       card_type: CardType.POKEMON,
     },
   });
@@ -289,7 +290,7 @@ const savePokemon = async (cheerio_detail: any) => {
   });
 };
 
-const saveSupporter = async (cheerio_detail: any) => {
+const saveSupporter = async (cheerio_detail: any, expansion_code: string) => {
   const card_image = cheerio_detail('.cardImage').find('img').attr('src');
   const supporter_name = cheerio_detail('.cardDetail').text().trim();
 
@@ -310,7 +311,8 @@ const saveSupporter = async (cheerio_detail: any) => {
     data: {
       name: supporter_name,
       regulation_code: regulation_code,
-      expansion_code: collector_code,
+      expansion_code: expansion_code,
+      collector_code: collector_code,
       description: description,
       card_type: card_type as CardType,
     },
@@ -328,7 +330,7 @@ const saveSupporter = async (cheerio_detail: any) => {
   });
 };
 
-const saveEnergy = async (cheerio_detail: any) => {
+const saveEnergy = async (cheerio_detail: any, expansion_code: string) => {
   const card_image = cheerio_detail('.cardImage').find('img').attr('src');
   const card_name = cheerio_detail('.cardDetail').text().trim();
 
@@ -344,7 +346,8 @@ const saveEnergy = async (cheerio_detail: any) => {
     data: {
       name: card_name,
       regulation_code: regulation_code,
-      expansion_code: collector_code,
+      expansion_code: expansion_code,
+      collector_code: collector_code,
       description: description,
       card_type: card_type,
     },

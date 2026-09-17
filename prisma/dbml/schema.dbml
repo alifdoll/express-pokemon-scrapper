@@ -11,6 +11,7 @@ Table cards {
   pokemon_type PokemonType
   has_ability Boolean [default: false]
   expansion_code String [not null]
+  collector_code String [not null]
   regulation_code String [not null]
   release_date DateTime
   description String [default: '']
