@@ -70,7 +70,7 @@ enum PokemonType {
   GRASS
   FIRE
   WATER
-  LIGHTING
+  LIGHTNING
   PSYCHIC
   DARKNESS
   METAL
